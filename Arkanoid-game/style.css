@@ -1,0 +1,82 @@
+body {
+    background-color: #111;
+    color: #fff;
+    font-family: 'Press Start 2P', cursive;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    border: 4px solid #444;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+canvas {
+    background: #000;
+    display: block;
+}
+
+#score-board {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 20px;
+    color: #fff;
+    z-index: 10;
+    text-shadow: 2px 2px #000;
+}
+
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.8);
+    transition: opacity 0.3s;
+}
+
+#overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+h1 {
+    font-size: 60px;
+    color: #f0f;
+    text-shadow: 4px 4px #00f;
+    margin-bottom: 40px;
+    letter-spacing: 10px;
+}
+
+p {
+    font-size: 20px;
+    margin: 10px 0;
+    color: #ccc;
+}
+
+.highlight {
+    color: #ff0;
+    animation: blink 1s infinite;
+}
+
+.controls {
+    font-size: 14px;
+    color: #888;
+    margin-top: 40px;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}

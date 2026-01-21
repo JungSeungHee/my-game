@@ -1,0 +1,320 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+:root {
+  --background: #faf8ef;
+  --text-color: #776e65;
+  --grid-background: #bbada0;
+  --cell-background: #cdc1b4;
+  --tile-text-light: #f9f6f2;
+  --tile-text-dark: #776e65;
+
+  --tile-2: #eee4da;
+  --tile-4: #ede0c8;
+  --tile-8: #f2b179;
+  --tile-16: #f59563;
+  --tile-32: #f67c5f;
+  --tile-64: #f65e3b;
+  --tile-128: #edcf72;
+  --tile-256: #edcc61;
+  --tile-512: #edc850;
+  --tile-1024: #edc53f;
+  --tile-2048: #edc22e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--background);
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-color);
+}
+
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 16px;
+}
+
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 80px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1;
+}
+
+#score-container {
+  display: flex;
+  gap: 8px;
+}
+
+.score-box {
+  background-color: var(--grid-background);
+  color: var(--tile-text-light);
+  padding: 10px 20px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.score-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+#score,
+#best-score {
+  font-size: 25px;
+  font-weight: 700;
+}
+
+#game-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.game-intro {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+#restart-button {
+  background-color: #8f7a66;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 18px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+#restart-button:hover {
+  background-color: #7f6a56;
+}
+
+#grid-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  /* 4개의 컬럼으로 균등 분할 (이것이 grid-cell 크기를 결정합니다) */
+  grid-template-rows: repeat(4, 1fr);
+  gap: 15px;
+  background-color: var(--grid-background);
+  padding: 15px;
+  border-radius: 6px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  /* 가로 세로 비율을 1:1로 유지합니다 (너비에 맞춰 높이가 자동으로 결정됨) */
+  position: relative;
+  touch-action: none;
+  /* Prevent scrolling on mobile while swiping */
+}
+
+.grid-cell {
+  background-color: var(--cell-background);
+  border-radius: 3px;
+}
+
+#tile-container {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  bottom: 15px;
+  width: auto;
+  height: auto;
+  z-index: 5;
+}
+
+
+.tile {
+  position: absolute;
+  /* Grid Content Box Width has 3 gaps of 15px */
+  /* CellWidth = (100% - 45px) / 4 */
+  width: calc((100% - 45px) / 4);
+  height: calc((100% - 45px) / 4);
+
+  /* Stride = CellWidth + Gap */
+  /* Stride = (100% - 45px)/4 + 60px/4 = (100% + 15px)/4 */
+  left: calc(var(--x) * (100% + 15px) / 4);
+  top: calc(var(--y) * (100% + 15px) / 4);
+
+  border-radius: 3px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 35px;
+
+  /* Separate transform for scale only */
+  transform: scale(1);
+
+  transition:
+    left 100ms ease-in-out,
+    top 100ms ease-in-out,
+    background-color 100ms ease-in-out,
+    transform 100ms ease-in-out;
+
+  animation: appear 200ms ease-in-out;
+  z-index: 10;
+}
+
+@keyframes appear {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tile.merged {
+  animation: pop 200ms ease-in-out;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.tile[data-value="2"] {
+  background-color: var(--tile-2);
+  color: var(--tile-text-dark);
+}
+
+.tile[data-value="4"] {
+  background-color: var(--tile-4);
+  color: var(--tile-text-dark);
+}
+
+.tile[data-value="8"] {
+  background-color: var(--tile-8);
+  color: var(--tile-text-light);
+}
+
+.tile[data-value="16"] {
+  background-color: var(--tile-16);
+  color: var(--tile-text-light);
+}
+
+.tile[data-value="32"] {
+  background-color: var(--tile-32);
+  color: var(--tile-text-light);
+}
+
+.tile[data-value="64"] {
+  background-color: var(--tile-64);
+  color: var(--tile-text-light);
+}
+
+.tile[data-value="128"] {
+  background-color: var(--tile-128);
+  color: var(--tile-text-light);
+  font-size: 30px;
+}
+
+.tile[data-value="256"] {
+  background-color: var(--tile-256);
+  color: var(--tile-text-light);
+  font-size: 30px;
+}
+
+.tile[data-value="512"] {
+  background-color: var(--tile-512);
+  color: var(--tile-text-light);
+  font-size: 30px;
+}
+
+.tile[data-value="1024"] {
+  background-color: var(--tile-1024);
+  color: var(--tile-text-light);
+  font-size: 25px;
+}
+
+.tile[data-value="2048"] {
+  background-color: var(--tile-2048);
+  color: var(--tile-text-light);
+  font-size: 25px;
+  box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.476), inset 0 0 0 1px rgba(255, 255, 255, 0.29);
+}
+
+@media (max-width: 520px) {
+  .title {
+    font-size: 50px;
+  }
+
+  #header {
+    margin-bottom: 10px;
+  }
+
+  .game-intro {
+    font-size: 14px;
+  }
+
+  #game-container {
+    padding: 10px;
+  }
+
+  #grid-container {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  #tile-container {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .tile {
+    /* Mobile: gap=10px */
+    width: calc((100% - 30px) / 4);
+    height: calc((100% - 30px) / 4);
+    font-size: 24px;
+
+    /* Stride = (100% - 30px)/4 + 10px = (100% + 10px)/4 */
+    left: calc(var(--x) * (100% + 10px) / 4);
+    top: calc(var(--y) * (100% + 10px) / 4);
+  }
+}
