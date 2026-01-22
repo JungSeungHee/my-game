@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엘리트 텍사스 홀덤</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">ELITE <span>POKER</span></div>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="label">총 판돈 (Pot):</span>
+                    <span id="total-pot" class="value">$0</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="game-table">
+            <!-- AI Players Area -->
+            <div class="ai-players">
+                <div id="player-2" class="player-slot ai">
+                    <div class="player-info">
+                        <div class="avatar">AI 1</div>
+                        <div class="details">
+                            <div class="name">마커스</div>
+                            <div class="balance" id="p2-balance">$1000</div>
+                        </div>
+                    </div>
+                    <div class="cards" id="p2-cards"></div>
+                    <div class="status-badge" id="p2-status">생각 중...</div>
+                </div>
+
+                <div id="player-3" class="player-slot ai">
+                    <div class="player-info">
+                        <div class="avatar">AI 2</div>
+                        <div class="details">
+                            <div class="name">엘레나</div>
+                            <div class="balance" id="p3-balance">$1000</div>
+                        </div>
+                    </div>
+                    <div class="cards" id="p3-cards"></div>
+                    <div class="status-badge" id="p3-status">대기 중</div>
+                </div>
+            </div>
+
+            <!-- Community Cards Area -->
+            <div class="community-cards-container">
+                <div class="cards" id="community-cards">
+                    <!-- Cards will be injected here -->
+                </div>
+                <div class="game-info-overlay" id="game-status">
+                    카드를 돌리는 중...
+                </div>
+            </div>
+
+            <!-- User Player Area -->
+            <div class="user-player-container">
+                <div id="player-1" class="player-slot user active">
+                    <div class="cards" id="p1-cards"></div>
+                    <div class="player-info">
+                        <div class="details">
+                            <div class="name">플레이어 (나)</div>
+                            <div class="balance" id="p1-balance">$1000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="controls-panel">
+            <div class="betting-controls" id="controls">
+                <button id="btn-fold" class="btn secondary">다이</button>
+                <button id="btn-check" class="btn secondary">체크</button>
+                <button id="btn-call" class="btn secondary">콜 <span id="call-amount"></span></button>
+                <div class="raise-group">
+                    <input type="range" id="raise-slider" min="0" max="1000" step="10">
+                    <button id="btn-raise" class="btn primary">레이즈 <span id="raise-amount">$0</span></button>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Overlays -->
+        <div id="win-overlay" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="winner-name">승리!</h2>
+                <div class="winner-hand" id="winner-hand-desc">포커 족보</div>
+                <div class="win-amount" id="winner-amount">+$500</div>
+                <button id="btn-next-hand" class="btn primary">다음 판 하기</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
