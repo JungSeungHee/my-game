@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>애니팡 스타일 3매치 퍼즐</title>
+    <style>
+        body {
+            background-color: #F0F2F5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Inter', 'Roboto', 'Apple SD Gothic Neo', sans-serif;
+            user-select: none;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #game-container {
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        #score-board {
+            font-size: 40px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        #timer-container {
+            width: 420px;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #progress-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 1s linear, background-color 0.3s ease;
+        }
+
+        #board {
+            width: 420px;
+            height: 420px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .block {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 44px;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+            z-index: 10;
+            touch-action: none;
+        }
+
+        .block.selected {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            transform: scale(0.9);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            z-index: 11;
+        }
+
+        /* Modal */
+        #game-over-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #game-over-modal.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 40px 60px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transform: translateY(20px) scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #game-over-modal.show .modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-content h1 {
+            margin-top: 0;
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+
+        .modal-content #final-score {
+            font-weight: 800;
+            color: #4CAF50;
+            font-size: 36px;
+            display: block;
+            margin-top: 8px;
+        }
+
+        .restart-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .restart-btn:active {
+            transform: scale(0.96);
+        }
+
+        .restart-btn:hover {
+            background-color: #45a049;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .block.popping {
+            animation: pop 0.3s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="score-board">0</div>
+    <div id="timer-container">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="board"></div>
+</div>
+
+<div id="game-over-modal">
+    <div class="modal-content">
+        <h1>게임 종료!</h1>
+        <p>최종 점수 <span id="final-score">0</span></p>
+        <button class="restart-btn" onclick="startGame()">재시작</button>
+    </div>
+</div>
+
+<script>
+    const ROWS = 7;
+    const COLS = 7;
+    const BLOCK_SIZE = 60; // px
+    const EMOJIS = ['🐶', '🐱', '🐰', '🐻', '🐷'];
+    const BOMB = '💣';
+    const TIME_LIMIT = 60; // 초
+
+    let board = [];
+    let score = 0;
+    let timeRemaining = TIME_LIMIT;
+    let timerInterval = null;
+    let isLocked = false;
+    
+    let selectedBlock = null;
+    let dragStartPos = null;
+
+    const boardEl = document.getElementById('board');
+    const scoreEl = document.getElementById('score-board');
+    const progressEl = document.getElementById('progress-bar');
+    const modalEl = document.getElementById('game-over-modal');
+    const finalScoreEl = document.getElementById('final-score');
+
+    function initBoard() {
+        boardEl.innerHTML = '';
+        board = [];
+        for (let r = 0; r < ROWS; r++) {
+            board[r] = [];
+            for (let c = 0; c < COLS; c++) {
+                board[r][c] = generateRandomEmoji(r, c);
+            }
+        }
+        renderBoard();
+    }
+
+    function generateRandomEmoji(r, c) {
+        let options = [...EMOJIS];
+        if (r >= 2) {
+            if (board[r-1][c] && board[r-2][c] && board[r-1][c].emoji === board[r-2][c].emoji) {
+                options = options.filter(e => e !== board[r-1][c].emoji);
+            }
+        }
+        if (c >= 2) {
+            if (board[r][c-1] && board[r][c-2] && board[r][c-1].emoji === board[r][c-2].emoji) {
+                options = options.filter(e => e !== board[r][c-1].emoji);
+            }
+        }
+        const emoji = options[Math.floor(Math.random() * options.length)];
+        return { emoji, el: null, r, c };
+    }
+
+    function createBlockElement(block) {
+        const div = document.createElement('div');
+        div.className = 'block';
+        div.innerText = block.emoji;
+        
+        updateElementPosition(div, block.r, block.c, false); // no transition initially
+
+        div.addEventListener('pointerdown', (e) => handlePointerDown(e, block));
+        
+        div.addEventListener('click', () => {
+            if (isLocked) return;
+            if (block.emoji === BOMB) {
+                triggerBomb(block.r, block.c);
+            }
+        });
+
+        boardEl.appendChild(div);
+        block.el = div;
+    }
+
+    function updateElementPosition(el, r, c, smooth = true) {
+        if (!smooth) {
+            el.style.transition = 'none';
+        } else {
+            el.style.transition = 'transform 0.3s ease-in-out';
+        }
+        el.style.transform = `translate(${c * BLOCK_SIZE}px, ${r * BLOCK_SIZE}px)`;
+    }
+
+    function renderBoard() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                createBlockElement(board[r][c]);
+            }
+        }
+    }
+
+    function handlePointerDown(e, block) {
+        if (isLocked) return;
+        if (block.emoji === BOMB) return;
+
+        if (selectedBlock && selectedBlock !== block) {
+            if (isAdjacent(selectedBlock, block)) {
+                attemptSwap(selectedBlock, block);
+                return;
+            } else {
+                selectedBlock.el.classList.remove('selected');
+                updateElementPosition(selectedBlock.el, selectedBlock.r, selectedBlock.c);
+            }
+        }
+        
+        selectedBlock = block;
+        block.el.classList.add('selected');
+        
+        dragStartPos = { x: e.clientX, y: e.clientY };
+
+        const onMove = (moveEvent) => {
+            if (!dragStartPos) return;
+            const dx = moveEvent.clientX - dragStartPos.x;
+            const dy = moveEvent.clientY - dragStartPos.y;
+            
+            if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                let targetR = block.r;
+                let targetC = block.c;
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    targetC += Math.sign(dx);
+                } else {
+                    targetR += Math.sign(dy);
+                }
+
+                if (targetR >= 0 && targetR < ROWS && targetC >= 0 && targetC < COLS) {
+                    const targetBlock = board[targetR][targetC];
+                    if (targetBlock.emoji !== BOMB) {
+                        onEnd();
+                        attemptSwap(block, targetBlock);
+                    }
+                } else {
+                    onEnd();
+                }
+            }
+        };
+
+        const onEnd = () => {
+            dragStartPos = null;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onEnd);
+            document.removeEventListener('pointercancel', onEnd);
+        };
+
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onEnd);
+        document.addEventListener('pointercancel', onEnd);
+    }
+
+    function isAdjacent(b1, b2) {
+        const dr = Math.abs(b1.r - b2.r);
+        const dc = Math.abs(b1.c - b2.c);
+        return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    }
+
+    async function attemptSwap(b1, b2) {
+        if (b1.el) b1.el.classList.remove('selected');
+        if (b2.el) b2.el.classList.remove('selected');
+        selectedBlock = null;
+        isLocked = true;
+
+        swapBlocks(b1, b2);
+        await sleep(300);
+
+        const matches = findMatches();
+        if (matches.matchedSet.size > 0) {
+            await processMatches(matches);
+        } else {
+            swapBlocks(b1, b2);
+            await sleep(300);
+            isLocked = false;
+        }
+    }
+
+    function swapBlocks(b1, b2) {
+        const r1 = b1.r, c1 = b1.c;
+        const r2 = b2.r, c2 = b2.c;
+
+        board[r1][c1] = b2;
+        board[r2][c2] = b1;
+
+        b1.r = r2; b1.c = c2;
+        b2.r = r1; b2.c = c1;
+
+        updateElementPosition(b1.el, b1.r, b1.c);
+        updateElementPosition(b2.el, b2.r, b2.c);
+    }
+
+    function findMatches() {
+        const matchSet = new Set();
+        const bombsToCreate = [];
+
+        for (let r = 0; r < ROWS; r++) {
+            let matchLength = 1;
+            for (let c = 1; c <= COLS; c++) {
+                if (c < COLS && board[r][c].emoji === board[r][c-1].emoji && board[r][c].emoji !== BOMB) {
+                    matchLength++;
+                } else {
+                    if (matchLength >= 3) {
+                        const endC = c - 1;
+                        for (let k = 0; k < matchLength; k++) {
+                            matchSet.add(`${r},${endC - k}`);
+                        }
+                        if (matchLength >= 4) {
+                            bombsToCreate.push({ r, c: endC - Math.floor(matchLength / 2) });
+                        }
+                    }
+                    matchLength = 1;
+                }
+            }
+        }
+
+        for (let c = 0; c < COLS; c++) {
+            let matchLength = 1;
+            for (let r = 1; r <= ROWS; r++) {
+                if (r < ROWS && board[r][c].emoji === board[r-1][c].emoji && board[r][c].emoji !== BOMB) {
+                    matchLength++;
+                } else {
+                    if (matchLength >= 3) {
+                        const endR = r - 1;
+                        for (let k = 0; k < matchLength; k++) {
+                            matchSet.add(`${endR - k},${c}`);
+                        }
+                        if (matchLength >= 4) {
+                            bombsToCreate.push({ r: endR - Math.floor(matchLength / 2), c });
+                        }
+                    }
+                    matchLength = 1;
+                }
+            }
+        }
+
+        return { matchedSet: matchSet, bombs: bombsToCreate };
+    }
+
+    async function processMatches({ matchedSet, bombs }) {
+        if (matchedSet.size === 0) return;
+
+        score += matchedSet.size * 10;
+        updateScore();
+
+        const blocksToRemove = [];
+        matchedSet.forEach(pos => {
+            const [r, c] = pos.split(',').map(Number);
+            if (board[r][c]) {
+                blocksToRemove.push(board[r][c]);
+                board[r][c] = null;
+            }
+        });
+
+        bombs.forEach(bPos => {
+            const bombBlock = { emoji: BOMB, el: null, r: bPos.r, c: bPos.c };
+            createBlockElement(bombBlock);
+            board[bPos.r][bPos.c] = bombBlock;
+        });
+
+        blocksToRemove.forEach(b => {
+            if (b.el) b.el.classList.add('popping');
+        });
+
+        await sleep(300);
+
+        blocksToRemove.forEach(b => {
+             if (b.el && b.el.parentNode) b.el.parentNode.removeChild(b.el);
+        });
+
+        await applyGravity();
+    }
+
+    async function triggerBomb(centerR, centerC) {
+        if (isLocked) return;
+        isLocked = true;
+
+        const blocksToRemove = [];
+
+        for (let r = Math.max(0, centerR - 1); r <= Math.min(ROWS - 1, centerR + 1); r++) {
+            for (let c = Math.max(0, centerC - 1); c <= Math.min(COLS - 1, centerC + 1); c++) {
+                if (board[r][c]) {
+                    blocksToRemove.push(board[r][c]);
+                    board[r][c] = null;
+                }
+            }
+        }
+
+        score += blocksToRemove.length * 10;
+        updateScore();
+
+        blocksToRemove.forEach(b => {
+            if (b.el) b.el.classList.add('popping');
+        });
+
+        await sleep(300);
+
+        blocksToRemove.forEach(b => {
+            if (b.el && b.el.parentNode) b.el.parentNode.removeChild(b.el);
+        });
+
+        await applyGravity();
+    }
+
+    async function applyGravity() {
+        let moved = false;
+        
+        for (let c = 0; c < COLS; c++) {
+            let emptySpaces = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (!board[r][c]) {
+                    emptySpaces++;
+                } else if (emptySpaces > 0) {
+                    const block = board[r][c];
+                    board[r + emptySpaces][c] = block;
+                    board[r][c] = null;
+                    block.r += emptySpaces;
+                    updateElementPosition(block.el, block.r, block.c, true);
+                    moved = true;
+                }
+            }
+            
+            for (let r = 0; r < emptySpaces; r++) {
+                const newEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+                const block = { emoji: newEmoji, el: null, r, c };
+                createBlockElement(block);
+                board[r][c] = block;
+                
+                updateElementPosition(block.el, r - emptySpaces, c, false);
+                block.el.offsetHeight; 
+                
+                requestAnimationFrame(() => {
+                    updateElementPosition(block.el, block.r, block.c, true);
+                });
+                moved = true;
+            }
+        }
+
+        if (moved) {
+            await sleep(350);
+        }
+
+        const matches = findMatches();
+        if (matches.matchedSet.size > 0) {
+            await processMatches(matches);
+        } else {
+            isLocked = false;
+        }
+    }
+
+    function updateScore() {
+        scoreEl.innerText = score;
+    }
+
+    function timerTick() {
+        timeRemaining--;
+        const pct = (timeRemaining / TIME_LIMIT) * 100;
+        progressEl.style.width = pct + '%';
+
+        if (timeRemaining <= 10) {
+            progressEl.style.backgroundColor = '#F44336'; 
+        }
+
+        if (timeRemaining <= 0) {
+            endGame();
+        }
+    }
+
+    function startGame() {
+        modalEl.classList.remove('show');
+        score = 0;
+        timeRemaining = TIME_LIMIT;
+        isLocked = false;
+        
+        if (selectedBlock && selectedBlock.el) {
+            selectedBlock.el.classList.remove('selected');
+        }
+        selectedBlock = null;
+        dragStartPos = null;
+        
+        progressEl.style.width = '100%';
+        progressEl.style.backgroundColor = '#4CAF50';
+        updateScore();
+
+        initBoard();
+
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(timerTick, 1000);
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isLocked = true;
+        
+        finalScoreEl.innerText = score;
+        modalEl.classList.add('show');
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    window.onload = startGame;
+
+</script>
+</body>
+</html>
