@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Card Game</title>
+<style>
+  :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a, #1e293b);
+      --primary: #3b82f6;
+      --secondary: #8b5cf6;
+      --accent: #f43f5e;
+      --success: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+  }
+  body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+  }
+  #app-container {
+      width: 100%;
+      max-width: 600px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+  }
+  header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px 20px;
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+  }
+  .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+  }
+  .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+  }
+  #attempts-val { color: var(--accent); }
+  
+  .progress-wrapper {
+      flex: 1;
+      margin: 0 20px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+  }
+  #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transition: width 0.3s ease;
+      position: absolute;
+      left: 0;
+      top: 0;
+  }
+
+  #board-container {
+      position: relative;
+      width: 100%;
+      perspective: 1200px;
+  }
+  #board {
+      position: relative;
+      width: 100%;
+      aspect-ratio: var(--cols) / var(--rows);
+  }
+
+  .card {
+      position: absolute;
+      width: calc(100% / var(--cols));
+      height: calc(100% / var(--rows));
+      padding: 5px; /* Use padding for grid gap */
+      box-sizing: border-box;
+      transition: left 0.4s ease, top 0.4s ease;
+      cursor: pointer;
+  }
+
+  .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  .card.flipped .card-inner, .card.peek .card-inner {
+      transform: rotateY(180deg);
+  }
+
+  .card-front, .card-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: clamp(2rem, 5vw, 3rem);
+      user-select: none;
+  }
+
+  .card-back {
+      background: linear-gradient(135deg, #475569, #334155);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .card-back::after {
+      content: '?';
+      font-size: 2.5rem;
+      color: rgba(255,255,255,0.15);
+      font-weight: bold;
+  }
+
+  .card-front {
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transform: rotateY(180deg);
+  }
+
+  /* Special Card Styling Override */
+  .card[data-special="true"] .card-front {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(217, 119, 6, 0.2));
+      border-color: rgba(251, 191, 36, 0.5);
+      box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.3);
+  }
+
+  .card.matched .card-inner {
+      transform: rotateY(180deg);
+  }
+  .card.matched {
+      cursor: default;
+  }
+
+  /* Overlay */
+  #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      border-radius: 20px;
+  }
+  #overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+  }
+  #overlay-title {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      text-align: center;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+  }
+  #overlay-btn {
+      padding: 12px 35px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+  }
+  #overlay-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  }
+</style>
+</head>
+<body>
+
+<div id="app-container">
+    <header>
+        <div class="stat">
+            <span class="stat-label">레벨</span>
+            <span class="stat-value" id="level-val">1</span>
+        </div>
+        <div class="progress-wrapper">
+            <div id="progress-bar"></div>
+        </div>
+        <div class="stat">
+            <span class="stat-label">남은 횟수</span>
+            <span class="stat-value" id="attempts-val">10</span>
+        </div>
+    </header>
+
+    <div id="board-container">
+        <div id="board">
+            <!-- Cards generated dynamically -->
+        </div>
+        <div id="overlay">
+            <h1 id="overlay-title">Game Over</h1>
+            <button id="overlay-btn">Retry</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const GameData = {
+    currentLevel: 1,
+    levels: [
+        { level: 1, limit: 12, cols: 4, rows: 3, attempts: 10, specials: [] }, // 12 cards, 6 pairs
+        { level: 2, limit: 16, cols: 4, rows: 4, attempts: 15, specials: ['shuffle', 'peek'] }, // 16 cards, 7 pairs + 2 specials
+        { level: 3, limit: 20, cols: 5, rows: 4, attempts: 20, specials: ['shuffle', 'shuffle', 'peek', 'peek'] }, // 20 cards, 8 pairs + 4 specials
+        { level: 4, limit: 24, cols: 6, rows: 4, attempts: 25, specials: ['shuffle', 'shuffle', 'peek', 'peek'] } // 24 cards, 10 pairs + 4 specials
+    ],
+    emojis: ['🍎', '🍐', '🍊', '🍋', '🍇', '🍓', '🍈', '🍉', '🍌', '🍒'],
+    specialIcons: {
+        'shuffle': '🔀',
+        'peek': '👁️'
+    }
+};
+
+let state = 'INIT'; // INIT, PREVIEW, SHUFFLING, PLAYING, CHECKING, SPECIAL_EFFECT, GAMEOVER
+let deck = [];
+let attempts = 0;
+let matches = 0;
+let totalPairs = 0;
+let selectedCards = [];
+
+const elements = {
+    board: document.getElementById('board'),
+    levelVal: document.getElementById('level-val'),
+    attemptsVal: document.getElementById('attempts-val'),
+    progressBar: document.getElementById('progress-bar'),
+    overlay: document.getElementById('overlay'),
+    overlayTitle: document.getElementById('overlay-title'),
+    overlayBtn: document.getElementById('overlay-btn')
+};
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+function shuffleArray(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function setCardPosition(cardEl, gridIdx, cols, rows) {
+    const col = gridIdx % cols;
+    const row = Math.floor(gridIdx / cols);
+    cardEl.style.left = `${(col / cols) * 100}%`;
+    cardEl.style.top = `${(row / rows) * 100}%`;
+    cardEl.dataset.gridIdx = gridIdx;
+}
+
+function generateDeck(levelConfig) {
+    const { limit, specials } = levelConfig;
+    const normalCount = limit - specials.length;
+    totalPairs = normalCount / 2;
+    
+    let cards = [];
+    
+    // Add normal pairs
+    for (let i = 0; i < totalPairs; i++) {
+        cards.push({ type: 'normal', value: GameData.emojis[i] });
+        cards.push({ type: 'normal', value: GameData.emojis[i] });
+    }
+    
+    // Add special cards
+    specials.forEach(type => {
+        cards.push({ type: 'special', value: type });
+    });
+    
+    return shuffleArray(cards);
+}
+
+function renderBoard() {
+    elements.board.innerHTML = '';
+    
+    const config = GameData.levels[GameData.currentLevel - 1];
+    elements.board.style.setProperty('--cols', config.cols);
+    elements.board.style.setProperty('--rows', config.rows);
+    
+    attempts = config.attempts;
+    matches = 0;
+    selectedCards = [];
+    updateUI();
+
+    deck.forEach((cardData, i) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card';
+        cardEl.dataset.type = cardData.type;
+        cardEl.dataset.value = cardData.value;
+        cardEl.dataset.special = cardData.type === 'special';
+        
+        let displayContent = cardData.type === 'special' 
+            ? GameData.specialIcons[cardData.value] 
+            : cardData.value;
+
+        cardEl.innerHTML = `
+            <div class="card-inner">
+                <div class="card-front">${displayContent}</div>
+                <div class="card-back"></div>
+            </div>
+        `;
+        
+        setCardPosition(cardEl, i, config.cols, config.rows);
+        cardEl.addEventListener('click', () => onCardClick(cardEl));
+        elements.board.appendChild(cardEl);
+    });
+}
+
+function updateUI() {
+    elements.levelVal.textContent = GameData.currentLevel;
+    elements.attemptsVal.textContent = Math.max(attempts, 0);
+    const progress = totalPairs > 0 ? (matches / totalPairs) * 100 : 0;
+    elements.progressBar.style.width = `${progress}%`;
+}
+
+async function startGameSequence() {
+    state = 'PREVIEW';
+    const cards = Array.from(document.querySelectorAll('.card'));
+    
+    // Show all cards face up for 3 seconds
+    cards.forEach(c => c.classList.add('flipped'));
+    await delay(3000);
+    
+    // Flip all cards face down
+    cards.forEach(c => c.classList.remove('flipped'));
+    await delay(600); // Wait for the flip animation to finish
+    
+    state = 'PLAYING';
+}
+
+async function onCardClick(card) {
+    if (state !== 'PLAYING') return;
+    if (card.classList.contains('flipped') || card.classList.contains('matched') || card.classList.contains('peek')) return;
+
+    // Handle Special Card Logic
+    if (card.dataset.special === "true") {
+        await handleSpecialCard(card);
+        return;
+    }
+
+    // Handle Normal Card Logic
+    card.classList.add('flipped');
+    selectedCards.push(card);
+
+    if (selectedCards.length === 2) {
+        state = 'CHECKING';
+        const [card1, card2] = selectedCards;
+        
+        if (card1.dataset.value === card2.dataset.value) {
+            // Match success
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+            matches++;
+            updateUI();
+            selectedCards = [];
+            checkWinCondition();
+            
+            if (state !== 'GAMEOVER') state = 'PLAYING';
+        } else {
+            // Match fail
+            attempts--;
+            updateUI();
+            
+            // 두번째 카드를 뒤집었을때 1초(1000ms) 정도 모양을 보여주며 기억하게 함
+            await delay(1000);
+            card1.classList.remove('flipped');
+            card2.classList.remove('flipped');
+            selectedCards = [];
+            
+            if (attempts <= 0) {
+                endGame(false);
+                return;
+            }
+            
+            state = 'PLAYING';
+        }
+    }
+}
+
+async function handleSpecialCard(card) {
+    state = 'SPECIAL_EFFECT';
+    card.classList.add('flipped', 'matched');
+    const config = GameData.levels[GameData.currentLevel - 1];
+    
+    if (card.dataset.value === 'shuffle') {
+        await delay(1000); // 셔플 카드 클릭 후 1초 대기
+
+        // Collect all face-down, non-matched, normal cards and select up to 4 to swap
+        const validCards = Array.from(document.querySelectorAll('.card:not(.matched):not(.flipped):not(.peek)')).filter(c => c.dataset.special === 'false');
+        if (validCards.length >= 2) {
+            const numToSwap = Math.min(validCards.length, 4);
+            const selected = shuffleArray(validCards).slice(0, numToSwap);
+            
+            let gridIndices = selected.map(c => parseInt(c.dataset.gridIdx));
+            gridIndices.unshift(gridIndices.pop()); // Shift by 1 element cyclically
+            
+            selected.forEach((c, i) => {
+                setCardPosition(c, gridIndices[i], config.cols, config.rows);
+            });
+            await delay(400); // Wait for position swap animation
+        }
+    } else if (card.dataset.value === 'peek') {
+        const validCards = Array.from(document.querySelectorAll('.card:not(.matched):not(.flipped)'));
+        validCards.forEach(c => c.classList.add('peek'));
+        await delay(2000);
+        validCards.forEach(c => c.classList.remove('peek'));
+        await delay(300); // Re-allow interaction after card starts flipping back
+    }
+    
+    // Check if game was already won (if all normal pairs were matched but this special was the last click)
+    checkWinCondition();
+    
+    // Resume gameplay
+    if (state !== 'GAMEOVER') state = 'PLAYING';
+}
+
+function checkWinCondition() {
+    if (matches >= totalPairs) {
+        endGame(true);
+    }
+}
+
+function endGame(isWin) {
+    state = 'GAMEOVER';
+    elements.overlay.classList.add('active');
+    if (isWin) {
+        if (GameData.currentLevel < GameData.levels.length) {
+            elements.overlayTitle.textContent = 'Level Complete!';
+            elements.overlayBtn.textContent = 'Next Level';
+            elements.overlayBtn.onclick = () => {
+                GameData.currentLevel++;
+                initLevel();
+            };
+        } else {
+            elements.overlayTitle.textContent = 'Game Clear!!';
+            elements.overlayBtn.textContent = 'Play Again';
+            elements.overlayBtn.onclick = () => {
+                GameData.currentLevel = 1;
+                initLevel();
+            };
+        }
+    } else {
+        elements.overlayTitle.textContent = 'Game Over';
+        elements.overlayBtn.textContent = 'Retry Level';
+        elements.overlayBtn.onclick = () => {
+            initLevel();
+        };
+    }
+}
+
+function initLevel() {
+    elements.overlay.classList.remove('active');
+    const levelConfig = GameData.levels[GameData.currentLevel - 1];
+    deck = generateDeck(levelConfig);
+    renderBoard();
+    startGameSequence();
+}
+
+// Start game when page loads
+window.addEventListener('DOMContentLoaded', initLevel);
+</script>
+</body>
+</html>
